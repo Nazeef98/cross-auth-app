@@ -1,51 +1,125 @@
-import React from "react";
-import { Text, View, TextInput, Button, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import { 
+    Text, 
+    View, 
+    TextInput, 
+    StyleSheet, 
+    TouchableOpacity,
+    ActivityIndicator,
+    Alert 
+} from "react-native";
+import auth from '@react-native-firebase/auth';
 
 const SignupScreen = ({ navigation }: any) => {
-    let email = "";
-    let password = "";
-    let confirmPassword = "";
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({ 
+        email: "", 
+        password: "", 
+        confirmPassword: "" 
+    });
 
-    const onSignUp = () => {
-        console.log("Email:", email);
-        console.log("Password:", password);
-        console.log("Confirm Password:", confirmPassword);
-        // Sign-up logic goes here
+    const validateForm = () => {
+        let isValid = true;
+        const newErrors = { 
+            email: "", 
+            password: "", 
+            confirmPassword: "" 
+        };
+
+        if (!email) {
+            newErrors.email = "Email is required";
+            isValid = false;
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            newErrors.email = "Email is invalid";
+            isValid = false;
+        }
+
+        if (!password) {
+            newErrors.password = "Password is required";
+            isValid = false;
+        } else if (password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters";
+            isValid = false;
+        }
+
+        if (password !== confirmPassword) {
+            newErrors.confirmPassword = "Passwords don't match";
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+        return isValid;
     };
 
-    const onLogin = () => {
-        navigation.navigate("login");
+    const onSignUp = async () => {
+        if (!validateForm()) return;
+
+        try {
+            setLoading(true);
+            await auth().createUserWithEmailAndPassword(email, password);
+            navigation.replace("home");
+        } catch (error: any) {
+            Alert.alert("Error", error.message);
+        } finally {
+            setLoading(false);
+        }
     };
+
+    if (loading) {
+        return (
+            <View style={[styles.container, styles.centered]}>
+                <ActivityIndicator size="large" color="#007bff" />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Sign Up</Text>
 
             <TextInput
-                style={styles.input}
+                style={[styles.input, errors.email ? styles.inputError : null]}
                 placeholder="Email"
-                onChangeText={(text) => (email = text)}
+                value={email}
+                onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
             />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                onChangeText={(text) => (password = text)}
-                secureTextEntry
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                onChangeText={(text) => (confirmPassword = text)}
-                secureTextEntry
-            />
+            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-            <Button title="Sign Up" onPress={onSignUp} />
+            <TextInput
+                style={[styles.input, errors.password ? styles.inputError : null]}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+            />
+            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+
+            <TextInput
+                style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+            />
+            {errors.confirmPassword ? 
+                <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
+
+            <TouchableOpacity 
+                style={styles.signupButton} 
+                onPress={onSignUp}
+                disabled={loading}
+            >
+                <Text style={styles.signupButtonText}>Sign Up</Text>
+            </TouchableOpacity>
 
             <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>Already have an account?</Text>
-                <TouchableOpacity onPress={onLogin}>
+                <TouchableOpacity onPress={() => navigation.navigate("login")}>
                     <Text style={styles.loginLink}> Login</Text>
                 </TouchableOpacity>
             </View>
@@ -54,7 +128,7 @@ const SignupScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
+   container: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
@@ -89,6 +163,30 @@ const styles = StyleSheet.create({
         color: "#007bff",
         fontWeight: "bold",
     },
+    centered: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    inputError: {
+        borderColor: 'red',
+    },
+    errorText: {
+        color: 'red',
+        fontSize: 12,
+        marginBottom: 10,
+    },
+    signupButton: {
+        backgroundColor: '#007bff',
+        width: '100%',
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    signupButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    }
 });
 
 export default SignupScreen;
